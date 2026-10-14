@@ -35,8 +35,8 @@ struct SidebarView: View {
     var body: some View {
         List(selection: $selection) {
             Section {
-                ForEach(folders) { folder in
-                    folderNode(folder)
+                ForEach(visibleRows) { row in
+                    folderRow(row)
                 }
                 if deletedCount > 0 || selection == .recentlyDeleted {
                     HStack {
@@ -54,6 +54,13 @@ struct SidebarView: View {
                     .dropDestination(for: String.self) { items, _ in
                         onDrop(items, nil)
                     } isTargeted: { isAccountTargeted = $0 }
+            }
+        }
+        // One list-level menu for the right-clicked row, rather than a `.contextMenu` per row.
+        .contextMenu(forSelectionType: SidebarItem.self) { items in
+            if items.count == 1, case .folder(let id)? = items.first,
+               let folder = folderOptions.first(where: { $0.id == id })?.folder {
+                menu(for: folder)
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -76,23 +83,21 @@ struct SidebarView: View {
         }
     }
 
-    /// A folder row, wrapped in a disclosure group when it has subfolders. Recursive, hence `AnyView`.
-    private func folderNode(_ folder: Folder) -> AnyView {
-        let children = folder.sortedChildren
-        guard !children.isEmpty else { return AnyView(folderRow(folder)) }
-        return AnyView(
-            DisclosureGroup(isExpanded: isExpanded(folder)) {
-                ForEach(children) { child in
-                    folderNode(child)
-                }
-            } label: {
-                folderRow(folder)
-            })
+    /// The folder tree flattened to rows, skipping subfolders of collapsed folders. Rows are flat
+    /// (not nested DisclosureGroups) so expansion is driven only by `expanded`.
+    private var visibleRows: [FolderOption] {
+        FolderTree.visibleRows(folders, children: \.sortedChildren, isExpanded: { expanded.contains($0.persistentModelID) })
+            .map { FolderOption(folder: $0.node, level: $0.level) }
     }
 
-    private func folderRow(_ folder: Folder) -> some View {
-        FolderRow(
+    private func folderRow(_ row: FolderOption) -> some View {
+        let folder = row.folder
+        return FolderRow(
             folder: folder,
+            level: row.level,
+            hasChildren: !folder.children.isEmpty,
+            isExpanded: expanded.contains(folder.persistentModelID),
+            onToggle: { toggleExpanded(folder) },
             count: noteCount(folder),
             isRenaming: Binding(
                 get: { renamingFolder == folder.persistentModelID },
@@ -103,12 +108,11 @@ struct SidebarView: View {
                 return moved
             })
             .tag(SidebarItem.folder(folder.persistentModelID))
-            .contextMenu { menu(for: folder) }
     }
 
     @ViewBuilder
     private func menu(for folder: Folder) -> some View {
-        Button("New Folder") {
+        Button("New Subfolder") {
             expanded.insert(folder.persistentModelID)
             onNewSubfolder(folder)
         }
@@ -132,16 +136,13 @@ struct SidebarView: View {
         }
     }
 
-    private func isExpanded(_ folder: Folder) -> Binding<Bool> {
-        Binding(
-            get: { expanded.contains(folder.persistentModelID) },
-            set: { isExpanded in
-                if isExpanded {
-                    expanded.insert(folder.persistentModelID)
-                } else {
-                    expanded.remove(folder.persistentModelID)
-                }
-            })
+    private func toggleExpanded(_ folder: Folder) {
+        let id = folder.persistentModelID
+        if expanded.contains(id) {
+            expanded.remove(id)
+        } else {
+            expanded.insert(id)
+        }
     }
 
     /// Expands the ancestors of a newly selected folder, such as a just-created subfolder, so its row is visible.
@@ -159,6 +160,10 @@ struct SidebarView: View {
 
 private struct FolderRow: View {
     @Bindable var folder: Folder
+    let level: Int
+    let hasChildren: Bool
+    let isExpanded: Bool
+    let onToggle: () -> Void
     let count: Int
     @Binding var isRenaming: Bool
     let onDrop: ([String]) -> Bool
@@ -174,7 +179,20 @@ private struct FolderRow: View {
     }
 
     private var content: some View {
-        HStack {
+        HStack(spacing: 4) {
+            Color.clear.frame(width: CGFloat(level) * 14, height: 1)
+            Button(action: onToggle) {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                    .frame(width: 14, height: 14)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .opacity(hasChildren ? 1 : 0)
+            .disabled(!hasChildren)
+            .help(isExpanded ? "Collapse" : "Expand")
             if isRenaming {
                 Label {
                     TextField("Folder Name", text: $folder.name)

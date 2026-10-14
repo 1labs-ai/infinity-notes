@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 @main
-struct NotesCloneApp: App {
+struct InfinityNotesApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()

@@ -1,4 +1,4 @@
-name: NotesClone
+name: InfinityNotes
 options:
   bundleIdPrefix: com.oneinfinitylabs
   deploymentTarget:
@@ -12,31 +12,36 @@ settings:
     CODE_SIGN_STYLE: Manual
     DEVELOPMENT_TEAM: ""
 targets:
-  NotesClone:
+  InfinityNotes:
     type: application
     platform: macOS
     sources: [Sources]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.oneinfinitylabs.NotesClone
+        PRODUCT_NAME: Infinity Notes
+        PRODUCT_MODULE_NAME: InfinityNotes
+        PRODUCT_BUNDLE_IDENTIFIER: com.oneinfinitylabs.InfinityNotes
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Notes Clone
+        INFOPLIST_KEY_CFBundleDisplayName: Infinity Notes
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         ENABLE_HARDENED_RUNTIME: NO
-  NotesCloneTests:
+  InfinityNotesTests:
     type: bundle.unit-test
     platform: macOS
     sources: [Tests]
     dependencies:
-      - target: NotesClone
+      - target: InfinityNotes
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
+        # The product name contains a space, so the default test host path doesn't resolve.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Infinity Notes.app/Contents/MacOS/Infinity Notes"
+        BUNDLE_LOADER: "$(TEST_HOST)"
 schemes:
-  NotesClone:
+  InfinityNotes:
     build:
       targets:
-        NotesClone: all
+        InfinityNotes: all
     test:
-      targets: [NotesCloneTests]
+      targets: [InfinityNotesTests]

@@ -51,8 +51,13 @@ enum FolderTree {
 
     /// Depth-first rows for menus; `level` is 0 for roots.
     static func flatten<T>(_ roots: [T], children: (T) -> [T]) -> [(node: T, level: Int)] {
+        visibleRows(roots, children: children, isExpanded: { _ in true })
+    }
+
+    /// Depth-first rows for the sidebar, descending only into expanded nodes.
+    static func visibleRows<T>(_ roots: [T], children: (T) -> [T], isExpanded: (T) -> Bool) -> [(node: T, level: Int)] {
         func visit(_ node: T, _ level: Int) -> [(node: T, level: Int)] {
-            [(node, level)] + children(node).flatMap { visit($0, level + 1) }
+            [(node, level)] + (isExpanded(node) ? children(node).flatMap { visit($0, level + 1) } : [])
         }
         return roots.flatMap { visit($0, 0) }
     }

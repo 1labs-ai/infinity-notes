@@ -1,9 +1,9 @@
 import AppKit
 import SwiftData
 import XCTest
-@testable import NotesClone
+@testable import InfinityNotes
 
-final class NotesCloneTests: XCTestCase {
+final class InfinityNotesTests: XCTestCase {
     private var calendar: Calendar = {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "UTC")!
@@ -127,6 +127,14 @@ final class NotesCloneTests: XCTestCase {
         let rows = FolderTree.flatten([a, b], children: \.children)
         XCTAssertEqual(rows.map(\.node), [a, a1, a1x, a2, b])
         XCTAssertEqual(rows.map(\.level), [0, 1, 2, 1, 0])
+    }
+
+    func testVisibleRowsHideChildrenOfCollapsedFolders() {
+        let a = Node(), a1 = Node(a), a1x = Node(a1), a2 = Node(a), b = Node(), b1 = Node(b)
+        let rows = FolderTree.visibleRows([a, b], children: \.children, isExpanded: { $0 === a })
+        XCTAssertEqual(rows.map(\.node), [a, a1, a2, b])
+        XCTAssertEqual(rows.map(\.level), [0, 1, 1, 0])
+        XCTAssertFalse(rows.contains { $0.node === a1x || $0.node === b1 })
     }
 
     @MainActor
