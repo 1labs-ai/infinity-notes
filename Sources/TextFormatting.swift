@@ -142,3 +142,26 @@ enum TextFormatter {
         textView.didChangeText()
     }
 }
+
+extension TextFormatter {
+    /// Puts `title` on the note's first line in the Title style. An existing Title-styled first line is
+    /// replaced; otherwise the title is inserted above the content. Undoable as one step.
+    static func setTitle(_ title: String, in textView: NSTextView) {
+        guard let storage = textView.textStorage, textView.isEditable else { return }
+        let text = textView.string as NSString
+        let first = text.paragraphRange(for: NSRange(location: 0, length: 0))
+        let firstLine = text.substring(with: first).trimmingCharacters(in: .newlines)
+        let hasTitleLine = storage.length > 0 && !firstLine.isEmpty
+            && (storage.attribute(.font, at: 0, effectiveRange: nil) as? NSFont)?.pointSize == ParagraphStyleKind.title.font.pointSize
+        let range = hasTitleLine ? NSRange(location: 0, length: (firstLine as NSString).length) : NSRange(location: 0, length: 0)
+        let replacement = NSAttributedString(
+            string: hasTitleLine || storage.length == 0 ? title : title + "\n",
+            attributes: ParagraphStyleKind.defaultAttributes(.title))
+        guard textView.shouldChangeText(in: range, replacementString: replacement.string) else { return }
+        storage.beginEditing()
+        storage.replaceCharacters(in: range, with: replacement)
+        storage.endEditing()
+        textView.didChangeText()
+        textView.undoManager?.setActionName("Use Suggested Title")
+    }
+}

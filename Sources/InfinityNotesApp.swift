@@ -18,6 +18,7 @@ struct NotesActions {
     var newFolder: () -> Void
     var togglePin: (() -> Void)?
     var deleteNote: (() -> Void)?
+    var compareNotes: () -> Void
     var isPinned: Bool
 }
 
@@ -41,6 +42,10 @@ struct NotesCommands: Commands {
                 .disabled(actions?.togglePin == nil)
             Button("Delete Note") { actions?.deleteNote?() }
                 .disabled(actions?.deleteNote == nil)
+            Divider()
+            Button("Compare Notes…") { actions?.compareNotes() }
+                .keyboardShortcut("k", modifiers: [.command, .option])
+                .disabled(actions == nil)
         }
 
         CommandMenu("Format") {

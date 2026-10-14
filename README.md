@@ -63,6 +63,8 @@ open "build/Build/Products/Debug/Infinity Notes.app"
 | `Sources/DateGrouping.swift` | Today / Yesterday / Previous 7 / 30 Days / month / year sections |
 | `Sources/TextFormatting.swift` | Paragraph styles, bold/italic/underline/strikethrough, lists |
 | `Sources/RichTextView.swift` | `NSTextView` editor bridge |
+| `Sources/TitleSuggester.swift` | Title suggestions: on-device Apple Intelligence model, keyword fallback |
+| `Sources/CompareNotesView.swift` | Side-by-side note comparison with line-difference highlighting |
 | `Sources/ContentView.swift`, `SidebarView.swift`, `NoteListView.swift` | Three-column UI |
 | `Sources/InfinityNotesApp.swift` | App entry, menu commands and shortcuts |
 | `Tests/` | Unit tests for the pure logic |

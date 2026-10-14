@@ -10,6 +10,7 @@ struct NoteListView: View {
     let folderOptions: [FolderOption]
     let onTogglePin: (Note) -> Void
     let onMove: (Note, Folder) -> Void
+    let onCompare: (Note) -> Void
     let onDelete: (Note) -> Void
     let onRecover: (Note) -> Void
 
@@ -52,6 +53,7 @@ struct NoteListView: View {
         } else {
             Button(note.isPinned ? "Unpin Note" : "Pin Note") { onTogglePin(note) }
             moveMenu(for: note)
+            Button("Compare With…") { onCompare(note) }
             Divider()
             Button("Delete", role: .destructive) { onDelete(note) }
         }

@@ -6,6 +6,12 @@ enum SidebarItem: Hashable {
     case recentlyDeleted
 }
 
+struct ComparePair: Identifiable {
+    let id = UUID()
+    let left: PersistentIdentifier?
+    let right: PersistentIdentifier?
+}
+
 struct NoteSection: Identifiable {
     let id: String
     let title: String
@@ -22,6 +28,7 @@ struct ContentView: View {
     @State private var searchText = ""
     @State private var renamingFolder: PersistentIdentifier?
     @State private var noteToDeletePermanently: Note?
+    @State private var comparing: ComparePair?
 
     private var folders: [Folder] {
         allFolders.sorted { $0.isDefault && !$1.isDefault }
@@ -102,6 +109,7 @@ struct ContentView: View {
                 folderOptions: folderOptions,
                 onTogglePin: togglePin,
                 onMove: move,
+                onCompare: compare,
                 onDelete: delete,
                 onRecover: recover)
                 .navigationSplitViewColumnWidth(min: 220, ideal: 280)
@@ -114,7 +122,7 @@ struct ContentView: View {
                 }
         } detail: {
             if let note = selectedNote {
-                NoteEditorView(note: note, onDelete: { delete(note) })
+                NoteEditorView(note: note, onDelete: { delete(note) }, onCompare: { compare(note) })
             } else {
                 Text("No Note Selected").foregroundStyle(.secondary)
             }
@@ -130,6 +138,9 @@ struct ContentView: View {
         } message: { _ in
             Text("This note will be deleted. This action cannot be undone.")
         }
+        .sheet(item: $comparing) { pair in
+            CompareNotesView(notes: comparableNotes, left: pair.left, right: pair.right)
+        }
         .onAppear(perform: bootstrap)
         .onChange(of: noteSelection) { old, _ in discardIfEmpty(old) }
         .onChange(of: sidebarSelection) { _, _ in noteSelection = sections.first?.notes.first?.persistentModelID }
@@ -142,6 +153,7 @@ struct ContentView: View {
             newFolder: { newFolder() },
             togglePin: note.flatMap { note in note.deletedAt == nil ? { togglePin(note) } : nil },
             deleteNote: note.map { note in { delete(note) } },
+            compareNotes: { compare(note) },
             isPinned: note?.isPinned ?? false)
     }
 
@@ -251,6 +263,18 @@ struct ContentView: View {
         return handled
     }
 
+    private var comparableNotes: [Note] {
+        allNotes.filter { $0.deletedAt == nil && !$0.isEmpty }
+    }
+
+    /// Opens the comparison with `note` on the left and the most recently edited other note on the right.
+    private func compare(_ note: Note?) {
+        let others = comparableNotes.filter { $0 != note }
+        let left = note ?? others.first
+        let right = others.first { $0 != left }
+        comparing = ComparePair(left: left?.persistentModelID, right: right?.persistentModelID)
+    }
+
     private func togglePin(_ note: Note) {
         note.isPinned.toggle()
     }
@@ -295,6 +319,14 @@ struct ContentView: View {
 struct NoteEditorView: View {
     let note: Note
     let onDelete: () -> Void
+    let onCompare: () -> Void
+
+    @State private var handle = EditorHandle()
+    @State private var bannerSuggestion: String?
+    @State private var dismissedSuggestions: Set<String> = []
+    @State private var isShowingSuggestions = false
+
+    private var isEditable: Bool { note.deletedAt == nil }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -308,9 +340,32 @@ struct NoteEditorView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.top, 10)
-            RichTextView(note: note)
+            if let suggestion = bannerSuggestion, isEditable {
+                TitleSuggestionBanner(
+                    suggestion: suggestion,
+                    onUse: { useTitle(suggestion) },
+                    onDismiss: {
+                        dismissedSuggestions.insert(suggestion)
+                        bannerSuggestion = nil
+                    })
+                    .padding(.horizontal, 24)
+                    .padding(.top, 8)
+            }
+            RichTextView(note: note, handle: handle)
                 .id(note.persistentModelID)
         }
+        // Suggest automatically once typing pauses, only when the current title is a poor one.
+        .task(id: note.plainText) {
+            guard isEditable, TitleSuggester.titleNeedsImprovement(note.plainText) else {
+                bannerSuggestion = nil
+                return
+            }
+            try? await Task.sleep(for: .seconds(1.2))
+            guard !Task.isCancelled else { return }
+            let suggestion = TitleSuggester.keywordTitle(for: note.plainText)
+            bannerSuggestion = suggestion.flatMap { dismissedSuggestions.contains($0) || $0 == note.title ? nil : $0 }
+        }
+        .onChange(of: note.persistentModelID) { _, _ in dismissedSuggestions = [] }
         .toolbar {
             ToolbarItemGroup {
                 Menu {
@@ -325,11 +380,84 @@ struct NoteEditorView: View {
                     Label("Format", systemImage: "textformat")
                 }
                 .help("Text formatting")
-                .disabled(note.deletedAt != nil)
+                .disabled(!isEditable)
+
+                Button { isShowingSuggestions = true } label: {
+                    Label("Suggest Title", systemImage: "sparkles")
+                }
+                .help("Suggest a title from the note’s content")
+                .disabled(!isEditable || note.isEmpty)
+                .popover(isPresented: $isShowingSuggestions, arrowEdge: .bottom) {
+                    TitleSuggestionsPopover(text: note.plainText) { title in
+                        isShowingSuggestions = false
+                        useTitle(title)
+                    }
+                }
+
+                Button(action: onCompare) { Label("Compare", systemImage: "rectangle.split.2x1") }
+                    .help("Compare this note with another note side by side")
 
                 Button(action: onDelete) { Label("Delete", systemImage: "trash") }
                     .help("Delete note")
             }
         }
+    }
+
+    private func useTitle(_ title: String) {
+        guard let textView = handle.textView else { return }
+        TextFormatter.setTitle(title, in: textView)
+        bannerSuggestion = nil
+    }
+}
+
+private struct TitleSuggestionBanner: View {
+    let suggestion: String
+    let onUse: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "sparkles").foregroundStyle(.tint)
+            Text("Suggested title: ").foregroundStyle(.secondary) + Text(suggestion).fontWeight(.semibold)
+            Spacer(minLength: 8)
+            Button("Use Title", action: onUse)
+            Button(action: onDismiss) { Image(systemName: "xmark") }
+                .buttonStyle(.borderless)
+                .help("Dismiss suggestion")
+        }
+        .font(.callout)
+        .lineLimit(1)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+private struct TitleSuggestionsPopover: View {
+    let text: String
+    let onUse: (String) -> Void
+
+    @State private var suggestions: [String]?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Suggested Titles").font(.headline)
+            if let suggestions {
+                if suggestions.isEmpty {
+                    Text("Add more text to get a suggestion.").foregroundStyle(.secondary)
+                }
+                ForEach(suggestions, id: \.self) { title in
+                    Button { onUse(title) } label: {
+                        Text(title).frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            } else {
+                ProgressView().controlSize(.small)
+            }
+        }
+        .padding(14)
+        .frame(width: 280)
+        .task { suggestions = await TitleSuggester.suggestions(for: text) }
     }
 }

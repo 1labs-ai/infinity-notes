@@ -162,4 +162,47 @@ final class InfinityNotesTests: XCTestCase {
         XCTAssertNil(DragPayload(DragPayload.note(note.uuid).string.replacingOccurrences(of: "-", with: "")))
         XCTAssertNil(DragPayload("plain dragged text"))
     }
+
+    func testTitleNeedsImprovementForListOrSentenceFirstLine() {
+        XCTAssertTrue(TitleSuggester.titleNeedsImprovement("• Milk\n• Eggs"))
+        XCTAssertTrue(TitleSuggester.titleNeedsImprovement(String(repeating: "word ", count: 20)))
+        XCTAssertFalse(TitleSuggester.titleNeedsImprovement("Trip to Japan\nFlights booked"))
+        XCTAssertFalse(TitleSuggester.titleNeedsImprovement(""))
+    }
+
+    func testKeywordTitleUsesFrequentNounsInOrder() {
+        let title = TitleSuggester.keywordTitle(for: "The onboarding screens need fewer steps. Onboarding design should change, design matters.")
+        XCTAssertTrue(title?.contains("Design") == true)
+        XCTAssertLessThanOrEqual(title?.split(separator: " ").count ?? 0, 3)
+    }
+
+    func testCleanStripsModelDecoration() {
+        XCTAssertEqual(TitleSuggester.clean("1. \"Weekend Groceries.\""), "Weekend Groceries")
+        XCTAssertEqual(TitleSuggester.clean("- Trip Plans"), "Trip Plans")
+    }
+
+    @MainActor
+    func testSetTitleReplacesTitleLineOrInsertsAbove() {
+        let textView = NSTextView()
+        textView.textStorage?.setAttributedString(NSAttributedString(string: "• Milk\n• Eggs", attributes: ParagraphStyleKind.defaultAttributes(.body)))
+        TextFormatter.setTitle("Groceries", in: textView)
+        XCTAssertEqual(textView.string, "Groceries\n• Milk\n• Eggs")
+        TextFormatter.setTitle("Weekend Groceries", in: textView)
+        XCTAssertEqual(textView.string, "Weekend Groceries\n• Milk\n• Eggs")
+    }
+
+    func testNoteDiffMarksChangedParagraphs() {
+        let diff = NoteDiff.changedLines(left: "Title\nA\nB\nC", right: "Title\nA\nX\nC\nD")
+        XCTAssertEqual(Array(diff.removed), [2])
+        XCTAssertEqual(Array(diff.added), [2, 4])
+        let same = NoteDiff.changedLines(left: "A\n B", right: "A\nB ")
+        XCTAssertTrue(same.removed.isEmpty && same.added.isEmpty)
+    }
+
+    func testNoteDiffHighlightsOnlyChosenLines() {
+        let text = NSAttributedString(string: "A\nB\nC")
+        let result = NoteDiff.highlighted(text, lines: [1], color: .red)
+        XCTAssertNil(result.attribute(.backgroundColor, at: 0, effectiveRange: nil))
+        XCTAssertEqual(result.attribute(.backgroundColor, at: 2, effectiveRange: nil) as? NSColor, .red)
+    }
 }
