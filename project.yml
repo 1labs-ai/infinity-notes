@@ -1,0 +1,42 @@
+name: NotesClone
+options:
+  bundleIdPrefix: com.oneinfinitylabs
+  deploymentTarget:
+    macOS: "15.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    DEVELOPMENT_TEAM: ""
+targets:
+  NotesClone:
+    type: application
+    platform: macOS
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.oneinfinitylabs.NotesClone
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Notes Clone
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
+        ENABLE_HARDENED_RUNTIME: NO
+  NotesCloneTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [Tests]
+    dependencies:
+      - target: NotesClone
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  NotesClone:
+    build:
+      targets:
+        NotesClone: all
+    test:
+      targets: [NotesCloneTests]
