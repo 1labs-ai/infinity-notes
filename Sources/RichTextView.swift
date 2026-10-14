@@ -1,8 +1,15 @@
 import AppKit
 import SwiftUI
 
+/// Gives SwiftUI controls outside the editor access to its text view, e.g. to apply a suggested title.
+@MainActor
+final class EditorHandle {
+    weak var textView: NSTextView?
+}
+
 struct RichTextView: NSViewRepresentable {
     let note: Note
+    var handle: EditorHandle?
 
     func makeCoordinator() -> Coordinator { Coordinator(note: note) }
 
@@ -31,6 +38,7 @@ struct RichTextView: NSViewRepresentable {
         // New notes start with a Title line, as in Apple Notes.
         textView.typingAttributes = ParagraphStyleKind.defaultAttributes(note.isEmpty ? .title : .body)
         scrollView.documentView = textView
+        handle?.textView = textView
 
         if note.isEmpty, textView.isEditable {
             DispatchQueue.main.async { textView.window?.makeFirstResponder(textView) }
