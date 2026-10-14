@@ -26,7 +26,7 @@ struct NoteListView: View {
                     ForEach(section.notes) { note in
                         NoteRow(note: note, showsFolder: showsFolder)
                             .tag(note.persistentModelID)
-                            .draggable(DragPayload.note(note.persistentModelID).string)
+                            .draggable(DragPayload.note(note.uuid).string)
                             .contextMenu { menu(for: note) }
                     }
                 }

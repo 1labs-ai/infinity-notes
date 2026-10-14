@@ -174,7 +174,7 @@ private struct FolderRow: View {
         if folder.isDefault || isRenaming {
             content
         } else {
-            content.draggable(DragPayload.folder(folder.persistentModelID).string)
+            content.draggable(DragPayload.folder(folder.uuid).string)
         }
     }
 

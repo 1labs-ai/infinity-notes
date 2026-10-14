@@ -4,6 +4,8 @@ import SwiftData
 
 @Model
 final class Folder {
+    /// Stable identity for drag-and-drop. `PersistentIdentifier` doesn't survive an encode/decode round trip on macOS 15.
+    var uuid = UUID()
     var name: String
     var createdAt: Date
     var isDefault: Bool
@@ -28,6 +30,8 @@ final class Folder {
 
 @Model
 final class Note {
+    /// Stable identity for drag-and-drop; see `Folder.uuid`.
+    var uuid = UUID()
     var title: String
     var preview: String
     var plainText: String

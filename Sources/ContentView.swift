@@ -156,6 +156,10 @@ struct ContentView: View {
                 context.delete(note)
             }
         }
+        // Rows created before `uuid` existed may share one migrated default value.
+        var seen = Set<UUID>()
+        for folder in allFolders where !seen.insert(folder.uuid).inserted { folder.uuid = UUID() }
+        for note in allNotes where !seen.insert(note.uuid).inserted { note.uuid = UUID() }
         try? context.save()
         if sidebarSelection == nil, let folder = defaultFolder {
             sidebarSelection = .folder(folder.persistentModelID)
@@ -233,11 +237,11 @@ struct ContentView: View {
         for payload in items.compactMap(DragPayload.init) {
             switch payload {
             case .note(let id):
-                guard let folder, let note = allNotes.first(where: { $0.persistentModelID == id }) else { continue }
+                guard let folder, let note = allNotes.first(where: { $0.uuid == id }) else { continue }
                 move(note, to: folder)
                 handled = true
             case .folder(let id):
-                guard let moved = allFolders.first(where: { $0.persistentModelID == id }),
+                guard let moved = allFolders.first(where: { $0.uuid == id }),
                       canMove(moved, to: folder)
                 else { continue }
                 move(moved, to: folder)

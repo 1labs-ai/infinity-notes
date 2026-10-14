@@ -156,8 +156,10 @@ final class InfinityNotesTests: XCTestCase {
         try context.save()
         XCTAssertTrue(parent.children.isEmpty)
 
-        XCTAssertEqual(DragPayload(DragPayload.note(note.persistentModelID).string), .note(note.persistentModelID))
-        XCTAssertEqual(DragPayload(DragPayload.folder(child.persistentModelID).string), .folder(child.persistentModelID))
+        XCTAssertNotEqual(note.uuid, child.uuid)
+        XCTAssertEqual(DragPayload(DragPayload.note(note.uuid).string), .note(note.uuid))
+        XCTAssertEqual(DragPayload(DragPayload.folder(child.uuid).string), .folder(child.uuid))
+        XCTAssertNil(DragPayload(DragPayload.note(note.uuid).string.replacingOccurrences(of: "-", with: "")))
         XCTAssertNil(DragPayload("plain dragged text"))
     }
 }

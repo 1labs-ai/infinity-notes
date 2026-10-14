@@ -65,26 +65,23 @@ enum FolderTree {
 
 /// Drag-and-drop payload for notes and folders, carried as a string so no custom UTType is needed.
 enum DragPayload: Equatable {
-    case note(PersistentIdentifier)
-    case folder(PersistentIdentifier)
+    case note(UUID)
+    case folder(UUID)
 
-    private static let notePrefix = "notesclone-note:"
-    private static let folderPrefix = "notesclone-folder:"
+    private static let notePrefix = "infinitynotes-note:"
+    private static let folderPrefix = "infinitynotes-folder:"
 
     var string: String {
-        let (prefix, id) = switch self {
-        case .note(let id): (Self.notePrefix, id)
-        case .folder(let id): (Self.folderPrefix, id)
+        switch self {
+        case .note(let id): Self.notePrefix + id.uuidString
+        case .folder(let id): Self.folderPrefix + id.uuidString
         }
-        return prefix + ((try? JSONEncoder().encode(id)) ?? Data()).base64EncodedString()
     }
 
     init?(_ string: String) {
-        func decode(_ prefix: String) -> PersistentIdentifier? {
-            guard string.hasPrefix(prefix),
-                  let data = Data(base64Encoded: String(string.dropFirst(prefix.count)))
-            else { return nil }
-            return try? JSONDecoder().decode(PersistentIdentifier.self, from: data)
+        func decode(_ prefix: String) -> UUID? {
+            guard string.hasPrefix(prefix) else { return nil }
+            return UUID(uuidString: String(string.dropFirst(prefix.count)))
         }
         if let id = decode(Self.notePrefix) {
             self = .note(id)
