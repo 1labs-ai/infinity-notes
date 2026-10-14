@@ -7,7 +7,9 @@ struct NoteListView: View {
     let isRecentlyDeleted: Bool
     let showsFolder: Bool
     let emptyMessage: String
+    let folderOptions: [FolderOption]
     let onTogglePin: (Note) -> Void
+    let onMove: (Note, Folder) -> Void
     let onDelete: (Note) -> Void
     let onRecover: (Note) -> Void
 
@@ -24,6 +26,7 @@ struct NoteListView: View {
                     ForEach(section.notes) { note in
                         NoteRow(note: note, showsFolder: showsFolder)
                             .tag(note.persistentModelID)
+                            .draggable(DragPayload.note(note.persistentModelID).string)
                             .contextMenu { menu(for: note) }
                     }
                 }
@@ -44,11 +47,22 @@ struct NoteListView: View {
     private func menu(for note: Note) -> some View {
         if note.deletedAt != nil {
             Button("Recover") { onRecover(note) }
+            moveMenu(for: note)
             Button("Delete", role: .destructive) { onDelete(note) }
         } else {
             Button(note.isPinned ? "Unpin Note" : "Pin Note") { onTogglePin(note) }
+            moveMenu(for: note)
             Divider()
             Button("Delete", role: .destructive) { onDelete(note) }
+        }
+    }
+
+    private func moveMenu(for note: Note) -> some View {
+        Menu("Move to") {
+            ForEach(folderOptions) { option in
+                Button(option.indentedName) { onMove(note, option.folder) }
+                    .disabled(note.deletedAt == nil && note.folder == option.folder)
+            }
         }
     }
 }

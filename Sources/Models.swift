@@ -9,11 +9,20 @@ final class Folder {
     var isDefault: Bool
     @Relationship(deleteRule: .nullify, inverse: \Note.folder)
     var notes: [Note] = []
+    /// `nil` for a top-level folder.
+    var parent: Folder?
+    @Relationship(deleteRule: .nullify, inverse: \Folder.parent)
+    var children: [Folder] = []
 
-    init(name: String, isDefault: Bool = false, createdAt: Date = .now) {
+    init(name: String, isDefault: Bool = false, parent: Folder? = nil, createdAt: Date = .now) {
         self.name = name
         self.isDefault = isDefault
+        self.parent = parent
         self.createdAt = createdAt
+    }
+
+    var sortedChildren: [Folder] {
+        children.sorted { $0.createdAt < $1.createdAt }
     }
 }
 

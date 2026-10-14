@@ -1,7 +1,7 @@
 # Notes Clone
 
 A native macOS (SwiftUI + SwiftData) notes app modeled on Apple Notes' core features:
-folders, a date-grouped notes list with pinning, a rich-text editor, search, and
+nested folders, a date-grouped notes list with pinning, a rich-text editor, search, and
 Recently Deleted with 30-day retention.
 
 The app is an original implementation. Its feature map came from static analysis
@@ -34,7 +34,8 @@ open build/Build/Products/Debug/NotesClone.app
 
 | Path | Contents |
 |---|---|
-| `Sources/Models.swift` | SwiftData `Folder` and `Note` models |
+| `Sources/Models.swift` | SwiftData `Folder` (with subfolders) and `Note` models |
+| `Sources/FolderTree.swift` | Folder nesting rules (depth cap, no cycles) and the drag-and-drop payload |
 | `Sources/NoteText.swift` | Title/preview derivation, RTF storage, list markers, retention |
 | `Sources/DateGrouping.swift` | Today / Yesterday / Previous 7 / 30 Days / month / year sections |
 | `Sources/TextFormatting.swift` | Paragraph styles, bold/italic/underline/strikethrough, lists |
@@ -44,6 +45,14 @@ open build/Build/Products/Debug/NotesClone.app
 | `Tests/` | Unit tests for the pure logic |
 | `scripts/make-icon.sh` | Regenerates the app icon from `scripts/make-icon.swift` |
 
+## Folders
+
+- Right-click a folder > **New Folder** to make a subfolder (up to 4 levels).
+- Move a note with drag-and-drop onto a folder, or right-click > **Move to**. Moving a note out of
+  Recently Deleted recovers it.
+- Move a folder by dragging it onto another folder, or onto **On My Mac** to make it top-level.
+- Deleting a folder sends its notes, and its subfolders' notes, to Recently Deleted.
+
 ## Not yet built
 
-Gallery view, sort options, checklists, tables, attachments, subfolders, tags, sync.
+Gallery view, sort options, checklists, tables, attachments, tags, sync.
